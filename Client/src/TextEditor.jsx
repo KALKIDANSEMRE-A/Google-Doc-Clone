@@ -20,7 +20,6 @@ export default function TextEditor() {
   const { id: documentID } = useParams();
   const [socket, setSocket] = useState(null);
   const [quill, setQuill] = useState(null);
-  console.log(documentID);
 
   useEffect(() => {
     const s = io("http://localhost:3002/");
@@ -57,8 +56,8 @@ export default function TextEditor() {
   useEffect(() => {
     if (socket == null || quill == null) return;
 
-    const handler = (delta, oldDelta, source) => {
-      quill.updateContents(delta);
+    const handler = (delta) => {
+      quill.updateContents(delta, "silent");
     };
 
     socket.on("receive-changes", handler);
@@ -81,23 +80,20 @@ export default function TextEditor() {
     };
   }, [socket, quill]);
 
-  const wrapperRef = useCallback(
-    (wrapper) => {
-      if (wrapper == null) return;
+  const wrapperRef = useCallback((wrapper) => {
+    if (wrapper == null) return;
 
-      wrapper.innerHTML = "";
-      const editor = document.createElement("div");
-      wrapper.append(editor);
-      const q = new Quill(editor, {
-        theme: "snow",
-        modules: { toolbar: TOOLBAR_OPTIONS },
-      });
-      q.disable();
-      q.setText("Loading...");
-      setQuill(q);
-    },
-    [socket]
-  );
+    wrapper.innerHTML = "";
+    const editor = document.createElement("div");
+    wrapper.append(editor);
+    const q = new Quill(editor, {
+      theme: "snow",
+      modules: { toolbar: TOOLBAR_OPTIONS },
+    });
+    q.disable();
+    q.setText("Loading...");
+    setQuill(q);
+  }, []);
 
   return <div className="container" ref={wrapperRef}></div>;
 }

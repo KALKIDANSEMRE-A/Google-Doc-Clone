@@ -19,34 +19,45 @@ io.on("connection", (socket) => {
   console.log("New client connected");
 
   socket.on("get-document", async (documentID) => {
-    const document = await findOrCreateDocument(documentID);
-    socket.join(documentID);
-    socket.emit("load-document", document.data);
+    try {
+      const document = await findOrCreateDocument(documentID);
+      socket.join(documentID);
+      socket.emit("load-document", document.data);
+    } catch (error) {
+      console.error("Error loading document:", error);
+      socket.emit("error", "Failed to load document");
+    }
+  });
 
-    socket.on("send-changes", (delta) => {
-      socket.broadcast.to(documentID).emit("receive-changes", delta);
-    });
+  socket.on("send-changes", (delta, documentID) => {
+    if (!documentID) return;
+    socket.broadcast.to(documentID).emit("receive-changes", delta);
+  });
 
-    socket.on("save-document", async (data) => {
+  socket.on("save-document", async (data, documentID) => {
+    if (!documentID) return;
+    try {
       await Document.findByIdAndUpdate(documentID, { data }, { upsert: true });
-    });
+    } catch (error) {
+      console.error("Error saving document:", error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
   });
 });
 
-// ✅ Define the missing `findOrCreateDocument` function
 async function findOrCreateDocument(id) {
   if (!id) return null;
 
-  let document = await Document.findById(id);
-  if (document) return document;
-
   try {
+    let document = await Document.findById(id);
+    if (document) return document;
+
     return await Document.create({ _id: id, data: defaultValue });
   } catch (error) {
-    if (error.code === 11000) {
-      console.log("Document already exists, fetching...");
-      return await Document.findById(id);
-    }
+    console.error("Error in findOrCreateDocument:", error);
     throw error;
   }
 }
