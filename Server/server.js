@@ -36,7 +36,17 @@ io.on("connection", (socket) => {
 // ✅ Define the missing `findOrCreateDocument` function
 async function findOrCreateDocument(id) {
   if (!id) return null;
-  const document = await Document.findById(id);
+
+  let document = await Document.findById(id);
   if (document) return document;
-  return await Document.create({ _id: id, data: defaultValue });
+
+  try {
+    return await Document.create({ _id: id, data: defaultValue });
+  } catch (error) {
+    if (error.code === 11000) {
+      console.log("Document already exists, fetching...");
+      return await Document.findById(id);
+    }
+    throw error;
+  }
 }
